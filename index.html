@@ -1,0 +1,4745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Drift - Explore Without a Plan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+/* ========================================
+   SHARED STYLES (styles.css)
+   ======================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+  --bg-primary: #FAFAF8;
+  --bg-secondary: #F0EFEB;
+  --bg-card: #FFFFFF;
+  --text-primary: #1A1A18;
+  --text-secondary: #6B6B63;
+  --text-muted: #9C9C94;
+  --accent: #3D5A45;
+  --accent-light: #E8EDE9;
+  --accent-warm: #C4956A;
+  --crowd-quiet: #7BA085;
+  --crowd-moderate: #D4A84B;
+  --crowd-busy: #C75D5D;
+  --border: #E5E5E0;
+  --shadow: rgba(26, 26, 24, 0.08);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #2A2A28;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* FAB (Floating Action Button) for Add Marker */
+#addMarkerBtn {
+    position: absolute;
+    bottom: 90px;
+    right: 20px;
+    z-index: 1000;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 24px;
+    font-weight: 400;
+    font-family: 'DM Sans', sans-serif;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#addMarkerBtn:hover {
+    background: #345048;
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+#addMarkerBtn.active {
+    background: #31F527;
+    transform: rotate(45deg);
+}
+
+/* Phone Container */
+.phone-container {
+  width: 100%;
+  max-width: 390px;
+  height: 844px;
+  max-height: 95vh;
+  background: var(--bg-primary);
+  border-radius: 40px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 25px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1);
+}
+
+.leaflet-container {
+    touch-action: manipulation !important;
+}
+
+@media (max-width: 420px) {
+  body {
+    padding: 0;
+    background: var(--bg-primary);
+  }
+  .phone-container {
+    max-width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+/* Status Bar */
+.status-bar {
+  display: none;
+}
+
+/* App Content */
+.app-content {
+  height: calc(100% - 70px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+.app-content::-webkit-scrollbar {
+  display: none;
+}
+
+.app-content.full-height {
+  height: 100%;
+}
+
+/* Common Typography */
+.logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 32px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.tagline {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+/* Buttons */
+.btn {
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 14px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #345048;
+}
+
+.btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+  background: var(--border);
+}
+
+.btn-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--bg-card);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px var(--shadow);
+  padding: 0;
+}
+
+.btn-icon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--text-primary);
+}
+
+/* Action Cards */
+.action-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--shadow);
+}
+
+.action-card:active {
+  transform: scale(0.98);
+}
+
+.action-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.action-icon.explore {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.action-icon.spontaneous {
+  background: #FDF4E7;
+  color: var(--accent-warm);
+}
+
+.action-icon.map {
+  background: #E8EEF4;
+  color: #4A6FA5;
+}
+
+.action-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.action-text h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.action-text p {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Interest Chips */
+.chip {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.chip:hover, .chip.active {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.chip svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Crowd Badges */
+.crowd-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.crowd-badge.quiet {
+  background: #E8F0E9;
+  color: var(--crowd-quiet);
+}
+
+.crowd-badge.moderate {
+  background: #FDF4E7;
+  color: var(--crowd-moderate);
+}
+
+.crowd-badge.busy {
+  background: #FBEAEA;
+  color: var(--crowd-busy);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 30px;
+}
+
+.empty-icon {
+  width: 80px;
+  height: 80px;
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.empty-icon svg {
+  width: 36px;
+  height: 36px;
+  color: var(--text-muted);
+}
+
+.empty-state h3 {
+  font-size: 18px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  z-index: 1001;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  background: none;
+  border: none;
+  text-decoration: none;
+}
+
+.nav-item svg {
+  width: 24px;
+  height: 24px;
+}
+
+.nav-item span {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.nav-item.active {
+  color: var(--accent);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.85; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Loading Spinner */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1500;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+.loading-text {
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+/* ========================================
+   HOME PAGE STYLES (home.css)
+   ======================================== */
+
+/* Home Screen */
+.home-screen {
+  padding: 24px 20px;
+}
+
+.home-header {
+  margin-bottom: 32px;
+}
+
+/* XP Progress Card */
+.xp-card {
+  background: linear-gradient(135deg, var(--accent) 0%, #4A6B52 100%);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  color: white;
+  margin-bottom: 28px;
+}
+
+.xp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.xp-level {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.level-badge {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.level-info h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.level-info p {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.xp-stats {
+  display: flex;
+  gap: 20px;
+  font-size: 13px;
+}
+
+.xp-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.xp-stat svg {
+  width: 16px;
+  height: 16px;
+}
+
+.xp-progress {
+  margin-top: 12px;
+}
+
+.xp-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 8px;
+  opacity: 0.9;
+}
+
+.xp-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  background: white;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* Primary Actions */
+.primary-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+/* Interest Chips */
+.interest-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 32px;
+}
+
+/* Saved Places Preview */
+.saved-preview {
+  margin-bottom: 24px;
+}
+
+.saved-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.view-all {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.saved-place-mini {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.saved-place-mini:hover {
+  box-shadow: 0 4px 12px var(--shadow);
+}
+
+.saved-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--accent-light);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.saved-icon svg {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.saved-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.saved-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Recent Achievement */
+.achievement-badge {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.achievement-icon {
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #FFD93D 0%, #FFA93D 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.achievement-icon svg {
+  width: 22px;
+  height: 22px;
+  color: white;
+}
+
+.achievement-text h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.achievement-text p {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Home Animation */
+.home-screen > * {
+  animation: fadeIn 0.4s ease backwards;
+}
+
+.home-screen > *:nth-child(1) { animation-delay: 0s; }
+.home-screen > *:nth-child(2) { animation-delay: 0.05s; }
+.home-screen > *:nth-child(3) { animation-delay: 0.1s; }
+.home-screen > *:nth-child(4) { animation-delay: 0.15s; }
+.home-screen > *:nth-child(5) { animation-delay: 0.2s; }
+.home-screen > *:nth-child(6) { animation-delay: 0.25s; }
+
+/* ========================================
+   MAP PAGE STYLES (map.css)
+   ======================================== */
+
+/* Map Screen */
+.map-screen {
+  height: 100%;
+  position: relative;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  background: #E8E8E3;
+}
+
+/* Map Status Bar Override */
+.map-screen .status-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2000;
+}
+
+/* Map Controls */
+/* Map Filter Chips */
+.map-filters {
+  position: absolute;
+  top: 210px;
+  left: 16px;
+  z-index: 1001;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 180px;
+}
+
+.map-filters.visible {
+  display: flex;
+}
+
+.map-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.map-filter-chip {
+  flex-shrink: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.map-filter-chip:hover,
+.map-filter-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.map-overlay-top {
+  position: absolute;
+  top: 155px;
+  left: 16px;
+  right: 16px;
+  z-index: 1001;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.map-btn {
+  background: var(--bg-card);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  box-shadow: 0 2px 12px var(--shadow);
+  transition: all 0.2s ease;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.map-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px var(--shadow);
+}
+
+.map-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.map-btn.active {
+  background: var(--accent);
+  color: white;
+}
+
+.toggle-btn {
+  padding: 12px;
+}
+
+/* Bottom Panel */
+.bottom-panel {
+  position: absolute;
+  bottom: 70px;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 12px 20px 20px;
+  z-index: 1000;
+  box-shadow: 0 -4px 24px var(--shadow);
+  max-height: 45%;
+  overflow-y: auto;
+  transition: transform 0.3s ease;
+}
+
+.bottom-panel.collapsed {
+  transform: translateY(calc(100% - 60px));
+}
+
+.panel-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 auto 12px;
+  cursor: pointer;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.panel-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Suggestion Cards */
+.suggestion-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.suggestion-card:hover {
+  background: var(--accent-light);
+}
+
+.suggestion-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.suggestion-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.suggestion-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.suggestion-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.suggestion-meta svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* GPS Prompt */
+.gps-prompt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: 32px 24px;
+  box-shadow: 0 8px 32px var(--shadow);
+  z-index: 2000;
+  max-width: 320px;
+  text-align: center;
+}
+
+.gps-icon {
+  width: 64px;
+  height: 64px;
+  background: var(--accent-light);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.gps-icon svg {
+  width: 28px;
+  height: 28px;
+  color: var(--accent);
+}
+
+.gps-prompt h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.gps-prompt p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.gps-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Leaflet Customization */
+.leaflet-container {
+  background: #E8E8E3;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.user-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.located-animation {
+  width: 17px;
+  height: 17px;
+  background: #4A6FA5;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  animation: border-pulse 2s infinite;
+}
+
+@keyframes border-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 1);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+  }
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px var(--shadow);
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px;
+  font-size: 14px;
+}
+
+/* Place Marker */
+.place-marker {
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.place-marker:hover {
+  transform: scale(1.1);
+}
+
+.place-marker.discovered {
+  background: var(--text-muted);
+  opacity: 0.6;
+}
+
+.place-marker-wrapper {
+  background: transparent !important;
+}
+
+/* Marker appear animation */
+@keyframes markerAppear {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.place-marker.new-marker {
+  animation: markerAppear 0.3s ease-out;
+}
+
+/* Enhanced Marker Popup */
+.custom-popup .leaflet-popup-content-wrapper {
+  border-radius: var(--radius-md);
+  padding: 0;
+  overflow: hidden;
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0;
+  width: 220px !important;
+}
+
+.marker-popup {
+  padding: 14px;
+}
+
+.marker-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.marker-popup-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+  flex: 1;
+  line-height: 1.3;
+}
+
+.marker-popup-type {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: capitalize;
+  margin-bottom: 10px;
+}
+
+.marker-popup-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.marker-popup-distance,
+.marker-popup-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.marker-popup-discovered {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 500;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  background: var(--accent-light);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.marker-popup-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.marker-popup-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.2s ease;
+}
+
+.marker-popup-btn.view-btn {
+  background: var(--accent);
+  color: white;
+}
+
+.marker-popup-btn.view-btn:hover {
+  background: #345048;
+}
+
+.marker-popup-btn.delete-btn {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.marker-popup-btn.delete-btn:hover {
+  background: #FBEAEA;
+  color: var(--crowd-busy);
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  bottom: 160px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  max-width: 340px;
+  width: calc(100% - 40px);
+}
+
+.toast {
+  background: var(--text-primary);
+  color: white;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: toastIn 0.3s ease-out;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.toast.success {
+  background: var(--accent);
+}
+
+.toast.error {
+  background: var(--crowd-busy);
+}
+
+.toast.warning {
+  background: var(--crowd-moderate);
+}
+
+.toast-message {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.toast-undo {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.toast-undo:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+/* Confirmation Dialog */
+.confirm-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.confirm-dialog {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.confirm-dialog h3 {
+  font-size: 18px;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.confirm-dialog p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.confirm-dialog-actions button {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.2s ease;
+}
+
+.confirm-dialog-actions .cancel-btn {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.confirm-dialog-actions .confirm-btn {
+  background: var(--crowd-busy);
+  color: white;
+}
+
+/* Search Bar */
+.search-container {
+  position: absolute;
+  top: 60px;
+  left: 16px;
+  right: 16px;
+  z-index: 1001;
+  pointer-events: auto;
+}
+
+.search-container * {
+  pointer-events: auto;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  box-shadow: 0 4px 12px var(--shadow);
+  gap: 10px;
+}
+
+.search-bar svg {
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.search-bar input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.search-bar input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-clear {
+  padding: 4px;
+  background: var(--bg-secondary);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: none;
+}
+
+.search-clear.visible {
+  display: flex;
+}
+
+.search-clear svg {
+  width: 14px;
+  height: 14px;
+}
+
+.search-results-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  padding: 0 4px;
+}
+
+/* Filter badge indicator */
+.filter-indicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  background: var(--accent);
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ========================================
+   EXPLORE PAGE STYLES (explore.css)
+   ======================================== */
+
+/* Explore Screen */
+.explore-screen {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+}
+
+.explore-header {
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.explore-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  color: var(--text-primary);
+}
+
+.explore-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 30px;
+  text-align: center;
+}
+
+.explore-card {
+  position: relative;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: 32px 28px;
+  box-shadow: 0 8px 32px var(--shadow);
+  max-width: 320px;
+  animation: fadeIn 0.4s ease;
+}
+
+.explore-card-icon {
+  width: 56px;
+  height: 56px;
+  background: var(--accent-light);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.explore-card-icon svg {
+  width: 28px;
+  height: 28px;
+  color: var(--accent);
+}
+
+.explore-card h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.explore-card p {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.explore-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.explore-distance,
+.explore-walk-time {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.explore-distance svg,
+.explore-walk-time svg {
+  width: 14px;
+  height: 14px;
+}
+
+.explore-actions {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skip-btn {
+  width: 100%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 16px 24px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+.skip-btn:hover {
+  background: var(--border);
+  color: var(--text-primary);
+}
+
+.skip-btn:active {
+  transform: scale(0.98);
+}
+
+.skip-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Swipe hint */
+.swipe-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 12px;
+}
+
+/* Explore card swipe animation */
+.explore-card.swipe-left {
+  animation: swipeLeft 0.3s ease-out forwards;
+}
+
+@keyframes swipeLeft {
+  to {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+}
+
+.no-location {
+  text-align: center;
+  padding: 40px 30px;
+}
+
+.no-location h3 {
+  font-size: 20px;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.no-location p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+/* Saved Indicator Badge */
+.saved-indicator {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: var(--accent);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: fadeIn 0.3s ease;
+}
+
+.saved-indicator svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ========================================
+   PLACE PAGE STYLES (place.css)
+   ======================================== */
+
+/* Place Screen */
+.place-screen {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.place-header {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-primary);
+}
+
+.back-btn {
+  width: 40px;
+  height: 40px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.back-btn svg {
+  width: 20px;
+  height: 20px;
+  color: var(--text-primary);
+}
+
+.place-header-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Place Content */
+.place-content {
+  flex: 1 0 auto;
+  overflow-y: visible;
+  padding: 20px;
+}
+
+.place-hero {
+  background: var(--accent-light);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.place-hero-icon {
+  width: 72px;
+  height: 72px;
+  background: var(--bg-card);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.place-hero-icon svg {
+  width: 32px;
+  height: 32px;
+  color: var(--accent);
+}
+
+.place-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.place-type-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  background: var(--bg-card);
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+/* Place Info */
+.place-info-section {
+  margin-bottom: 24px;
+}
+
+.place-info-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.place-description {
+  font-size: 15px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.place-context {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent);
+}
+
+/* Place Stats */
+.place-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.place-stat {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.place-stat-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.place-stat-icon svg {
+  width: 18px;
+  height: 18px;
+  color: var(--text-secondary);
+}
+
+.place-stat-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.place-stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.place-stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Place Actions */
+.place-actions {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  padding: 20px;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  z-index: 10;
+}
+
+.place-actions .btn {
+  flex: 1;
+  width: 33.333%;
+}
+
+.place-actions .btn.saved {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.place-actions .btn.visited {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+/* Not Found State */
+.not-found {
+  text-align: center;
+  padding: 60px 30px;
+}
+
+.not-found-icon {
+  width: 80px;
+  height: 80px;
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.not-found-icon svg {
+  width: 36px;
+  height: 36px;
+  color: var(--text-muted);
+}
+
+.not-found h3 {
+  font-size: 20px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.not-found p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+/* ========================================
+   SAVED PAGE STYLES (saved.css)
+   ======================================== */
+
+/* Saved Screen */
+.saved-screen {
+  padding: 20px;
+  height: 100%;
+}
+
+.saved-header {
+  margin-bottom: 24px;
+}
+
+.saved-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.saved-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.saved-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.saved-tab {
+  flex: 1;
+  background: var(--bg-secondary);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.saved-tab.active {
+  background: var(--accent);
+  color: white;
+}
+
+.saved-place {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.saved-place:hover {
+  box-shadow: 0 4px 16px var(--shadow);
+}
+
+.saved-place-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--accent-light);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.saved-place-icon svg {
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+}
+
+.saved-place-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.saved-place-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-place-meta {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.saved-place-meta .dot {
+  width: 3px;
+  height: 3px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+}
+
+.saved-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--accent-light);
+  color: var(--accent);
+  text-transform: capitalize;
+}
+
+/* ========================================
+   NEARBY PAGE STYLES (nearby.css)
+   ======================================== */
+
+/* Nearby Screen */
+.nearby-screen {
+  padding: 24px 20px;
+}
+
+.nearby-header {
+  margin-bottom: 24px;
+}
+
+.nearby-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.nearby-header p {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Filter Section */
+.filter-section {
+  margin-bottom: 24px;
+}
+
+.filter-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.filter-chip:hover, .filter-chip.active {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.filter-chip svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Nearby Search */
+.nearby-search {
+  margin-bottom: 16px;
+}
+
+.nearby-search .search-bar {
+  position: relative;
+  box-shadow: none;
+  border: 1px solid var(--border);
+}
+
+/* Filter Header */
+.filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.filter-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.reset-filters {
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.2s ease;
+}
+
+.reset-filters:hover {
+  background: var(--accent-light);
+}
+
+/* Nearby Places List */
+.nearby-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nearby-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.nearby-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--shadow);
+}
+
+.nearby-card:active {
+  transform: scale(0.98);
+}
+
+.nearby-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--accent-light);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nearby-card-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.nearby-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.nearby-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.nearby-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.nearby-card-save {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.nearby-card-save:hover {
+  background: var(--bg-secondary);
+  color: var(--accent);
+}
+
+.nearby-card-save.saved {
+  color: var(--accent);
+}
+
+.nearby-card-save svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nearby-card-type {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.nearby-card-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.nearby-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.nearby-card-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nearby-card-meta-item svg {
+  width: 14px;
+  height: 14px;
+}
+
+.nearby-empty {
+  text-align: center;
+  padding: 60px 30px;
+}
+
+.nearby-empty-icon {
+  width: 80px;
+  height: 80px;
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.nearby-empty-icon svg {
+  width: 36px;
+  height: 36px;
+  color: var(--text-muted);
+}
+
+.nearby-empty h3 {
+  font-size: 18px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.nearby-empty p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+/* ========================================
+   ROUTER-SPECIFIC STYLES
+   ======================================== */
+.page-view {
+  width: 100%;
+  height: 100%;
+  display: none;
+}
+
+#page-map .app-content {
+  height: 100%;
+}
+
+.delete-marker-btn {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  background: #C75D5D; /* matches your "busy" red */
+  color: white;
+  cursor: pointer;
+  margin-top: 12px;
+}
+
+.delete-marker-btn:hover {
+  background: #B24E4E;
+}
+
+.delete-marker-btn:active {
+  transform: scale(0.98);
+}
+
+  </style>
+</head>
+<body>
+
+<div class="phone-container">
+  <div class="app-content" id="app-content">
+
+    <!-- PAGE: HOME -->
+    <div id="page-home" class="page-view">
+      <div class="home-screen">
+        <!-- Header -->
+        <div class="home-header">
+          <h1 class="logo">Drift</h1>
+          <p class="tagline">Explore without a plan</p>
+        </div>
+
+        <!-- XP Progress Card -->
+        <div class="xp-card">
+          <div class="xp-header">
+            <div class="xp-level">
+              <div class="level-badge" id="level-badge">5</div>
+              <div class="level-info">
+                <h3>Local Explorer</h3>
+                <p>Level <span id="user-level">5</span></p>
+              </div>
+            </div>
+            <div class="xp-stats">
+              <div class="xp-stat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                <span id="places-found">12</span>
+              </div>
+              <div class="xp-stat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                <span id="achievements">3</span>
+              </div>
+            </div>
+          </div>
+          <div class="xp-progress">
+            <div class="xp-bar-label">
+              <span>Progress to next level</span>
+              <span><span id="current-xp">450</span> / <span id="next-level-xp">600</span> XP</span>
+            </div>
+            <div class="xp-bar">
+              <div class="xp-bar-fill" id="xp-bar-fill" style="width: 75%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Achievement -->
+        <div id="recent-achievement" style="display: none;">
+          <div class="section-title">Recent Achievement</div>
+          <div class="achievement-badge">
+            <div class="achievement-icon">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </div>
+            <div class="achievement-text">
+              <h4 id="achievement-title">First Discovery!</h4>
+              <p id="achievement-desc">You found your first hidden gem</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Primary Actions -->
+        <div class="section-title">Start Exploring</div>
+        <div class="primary-actions">
+          <a href="#nearby" class="action-card" data-page="nearby">
+            <div class="action-icon explore">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+            </div>
+            <div class="action-text">
+              <h3>Explore Near Me</h3>
+              <p>Discover hidden gems nearby</p>
+            </div>
+          </a>
+
+          <a href="#explore" class="action-card" data-page="explore">
+            <div class="action-icon spontaneous">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </div>
+            <div class="action-text">
+              <h3>Spontaneous Mode</h3>
+              <p>Go in blind, be surprised</p>
+            </div>
+          </a>
+
+          <a href="#map" class="action-card" data-page="map">
+            <div class="action-icon map">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+                <line x1="8" y1="2" x2="8" y2="18"/>
+                <line x1="16" y1="6" x2="16" y2="22"/>
+              </svg>
+            </div>
+            <div class="action-text">
+              <h3>Map View</h3>
+              <p>See what's around you</p>
+            </div>
+          </a>
+        </div>
+
+        <!-- Quick Interests -->
+        <div class="section-title">Quick Interests</div>
+        <div class="interest-chips">
+          <a href="#map" class="chip" data-page="map">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 8h1a4 4 0 1 1 0 8h-1"/>
+              <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/>
+              <line x1="6" y1="2" x2="6" y2="4"/>
+              <line x1="10" y1="2" x2="10" y2="4"/>
+              <line x1="14" y1="2" x2="14" y2="4"/>
+            </svg>
+            Cafes
+          </a>
+          <a href="#map" class="chip" data-page="map">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22v-7l-2-2"/>
+              <path d="M17 8v.8A6 6 0 0 1 13.8 20H10A6.5 6.5 0 0 1 7 8a5 5 0 0 1 10 0Z"/>
+              <path d="m14 14-2 2"/>
+            </svg>
+            Nature
+          </a>
+          <a href="#map" class="chip" data-page="map">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 22V2l6 4 6-4v20"/>
+              <path d="M6 12h12"/>
+            </svg>
+            Architecture
+          </a>
+          <a href="#map" class="chip" data-page="map">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Hidden spots
+          </a>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PAGE: MAP -->
+    <div id="page-map" class="page-view">
+      <div class="map-screen">
+        <!-- Map Container -->
+        <button id="addMarkerBtn" title="Add marker">+</button>
+
+        <!-- Map Search Bar -->
+        <div class="search-container" id="map-search-container">
+          <div class="search-bar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" id="map-search-input" placeholder="Search places..." oninput="searchMapPlaces(this.value)">
+            <button class="search-clear" id="map-search-clear" onclick="clearMapSearch()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="search-results-count" id="map-search-results" style="display: none;"></div>
+        </div>
+
+        <div id="map"></div>
+
+        <!-- Map Controls -->
+        <!-- Map Filter Chips -->
+        <div class="map-filters" id="map-filters">
+          <button class="map-filter-chip active" data-filter="all" onclick="filterMapPlaces('all', this)">All</button>
+          <button class="map-filter-chip" data-filter="cafe" onclick="filterMapPlaces('cafe', this)">Cafes</button>
+          <button class="map-filter-chip" data-filter="nature" onclick="filterMapPlaces('nature', this)">Nature</button>
+          <button class="map-filter-chip" data-filter="architecture" onclick="filterMapPlaces('architecture', this)">Architecture</button>
+          <button class="map-filter-chip" data-filter="hidden" onclick="filterMapPlaces('hidden', this)">Hidden</button>
+        </div>
+
+        <div class="map-overlay-top">
+          <button class="map-btn" id="filter-toggle-btn" onclick="toggleMapFilters()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+            Filters
+          </button>
+          <button class="map-btn toggle-btn" onclick="centerOnUser()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="3"/>
+              <line x1="12" y1="2" x2="12" y2="6"/>
+              <line x1="12" y1="18" x2="12" y2="22"/>
+              <line x1="2" y1="12" x2="6" y2="12"/>
+              <line x1="18" y1="12" x2="22" y2="12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- GPS Prompt -->
+        <div class="gps-prompt" id="gps-prompt">
+          <div class="gps-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>
+          <h3>Choose Location</h3>
+          <p>Use your real location or test with a demo location to explore nearby hidden gems.</p>
+          <div class="gps-buttons">
+           <button class="btn btn-primary" onclick="requestRealLocation()"> 
+		 <!-- <button class="btn btn-primary" onclick="startRealtimeTracking(); document.getElementById('gps-prompt').style.display='none'">-->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              Use Real Location
+            </button>
+            <button class="btn btn-secondary" onclick="useDemoLocation()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+              </svg>
+              Use Demo Location
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay" style="display: none;">
+          <div class="loading-spinner"></div>
+          <p class="loading-text">Loading map...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: EXPLORE -->
+    <div id="page-explore" class="page-view">
+      <div class="explore-screen" id="explore-screen">
+        <div class="explore-header">
+          <h2 class="explore-title">Wander Mode</h2>
+          <button class="btn-icon" onclick="window.location.hash='#home'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="explore-content" id="explore-content">
+          <!-- Will be populated by JavaScript -->
+        </div>
+
+        <div class="explore-actions" id="explore-actions" style="display: none;">
+          <button class="btn btn-primary" onclick="goToPlace()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+            </svg>
+            Go Now
+          </button>
+          <button class="btn btn-secondary" id="explore-save-btn" onclick="toggleExploreSave()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span id="explore-save-text">Save for Later</span>
+          </button>
+          <button class="skip-btn" onclick="nextPlace()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14"/>
+              <path d="m12 5 7 7-7 7"/>
+            </svg>
+            Show me something else
+          </button>
+          <p class="swipe-hint">or swipe left to skip</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: PLACE -->
+    <div id="page-place" class="page-view">
+      <div class="place-screen">
+        <div class="place-header">
+          <button class="back-btn" onclick="goBack()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          <span class="place-header-title">Place Details</span>
+        </div>
+
+        <div class="place-content" id="place-content">
+          <!-- Hero Section -->
+          <div class="place-hero">
+            <div class="place-hero-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+            <h1 class="place-name" id="place-name">Loading...</h1>
+            <span class="place-type-badge" id="place-type">-</span>
+          </div>
+
+          <!-- Description -->
+          <div class="place-info-section">
+            <h3 class="place-info-title">About</h3>
+            <p class="place-description" id="place-description">-</p>
+            <div class="place-context" id="place-context">-</div>
+          </div>
+
+          <!-- Stats -->
+          <div class="place-info-section">
+            <h3 class="place-info-title">Details</h3>
+            <div class="place-stats">
+              <div class="place-stat">
+                <div class="place-stat-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                </div>
+                <div class="place-stat-text">
+                  <div class="place-stat-label">Distance</div>
+                  <div class="place-stat-value" id="place-distance">-</div>
+                </div>
+              </div>
+              <div class="place-stat">
+                <div class="place-stat-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  </svg>
+                </div>
+                <div class="place-stat-text">
+                  <div class="place-stat-label">Visit Time</div>
+                  <div class="place-stat-value" id="place-time">-</div>
+                </div>
+              </div>
+              <div class="place-stat">
+                <div class="place-stat-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                  </svg>
+                </div>
+                <div class="place-stat-text">
+                  <div class="place-stat-label">Crowd</div>
+                  <span class="crowd-badge" id="place-crowd">-</span>
+                </div>
+              </div>
+              <div class="place-stat">
+                <div class="place-stat-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                  </svg>
+                </div>
+                <div class="place-stat-text">
+                  <div class="place-stat-label">Effort</div>
+                  <div class="place-stat-value" id="place-effort">-</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="place-actions">
+          <button class="btn btn-primary" onclick="navigateToPlace()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+            </svg>
+            Navigate
+          </button>
+          <button class="btn btn-secondary" id="visited-btn" onclick="toggleVisited()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <span id="visited-btn-text">Mark as Visited</span>
+          </button>
+          <button class="btn btn-secondary" id="save-btn" onclick="toggleSave()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            </svg>
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: SAVED -->
+    <div id="page-saved" class="page-view">
+      <div class="saved-screen">
+        <div class="saved-header">
+          <h2 class="saved-title">Saved Places</h2>
+          <p class="saved-subtitle">Your discoveries & favorites</p>
+        </div>
+
+        <div class="saved-tabs">
+          <button class="saved-tab active" onclick="switchTab('saved')">Saved</button>
+          <button class="saved-tab" onclick="switchTab('visited')">Visited</button>
+        </div>
+
+        <div id="saved-list">
+          <!-- Will be populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: NEARBY -->
+    <div id="page-nearby" class="page-view">
+      <div class="nearby-screen">
+        <div class="nearby-header">
+          <h2>Explore Nearby</h2>
+          <p>Discover places around you</p>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="nearby-search">
+          <div class="search-bar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" id="nearby-search-input" placeholder="Search nearby places..." oninput="searchNearbyPlaces(this.value)">
+            <button class="search-clear" id="nearby-search-clear" onclick="clearNearbySearch()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-section" id="filter-section">
+          <div class="filter-header">
+            <span class="filter-label">Filter by:</span>
+            <button class="reset-filters" id="reset-filters" onclick="resetFilters()" style="display: none;">Reset</button>
+          </div>
+          <div class="filter-chips" id="filter-chips">
+            <button class="filter-chip active" data-filter="all">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+              </svg>
+              All
+            </button>
+            <button class="filter-chip" data-filter="cafe">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 8h1a4 4 0 1 1 0 8h-1"/>
+                <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/>
+                <line x1="6" y1="2" x2="6" y2="4"/>
+                <line x1="10" y1="2" x2="10" y2="4"/>
+                <line x1="14" y1="2" x2="14" y2="4"/>
+              </svg>
+              Cafes
+            </button>
+            <button class="filter-chip" data-filter="nature">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22v-7l-2-2"/>
+                <path d="M17 8v.8A6 6 0 0 1 13.8 20H10A6.5 6.5 0 0 1 7 8a5 5 0 0 1 10 0Z"/>
+                <path d="m14 14-2 2"/>
+              </svg>
+              Nature
+            </button>
+            <button class="filter-chip" data-filter="culture">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 22V2l6 4 6-4v20"/>
+                <path d="M6 12h12"/>
+              </svg>
+              Culture
+            </button>
+            <button class="filter-chip" data-filter="hidden">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              Hidden
+            </button>
+          </div>
+        </div>
+
+        <!-- Places List -->
+        <div class="nearby-list" id="nearby-list">
+          <!-- Will be populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <a href="#home" class="nav-item" data-page="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span>Home</span>
+    </a>
+    <a href="#map" class="nav-item" data-page="map">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+        <line x1="8" y1="2" x2="8" y2="18"/>
+        <line x1="16" y1="6" x2="16" y2="22"/>
+      </svg>
+      <span>Map</span>
+    </a>
+    <a href="#explore" class="nav-item" data-page="explore">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+      </svg>
+      <span>Wander</span>
+    </a>
+    <a href="#saved" class="nav-item" data-page="saved">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+      </svg>
+      <span>Saved</span>
+    </a>
+  </nav>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+
+/* ========================================
+   SHARED UTILITIES (app.js)
+   ======================================== */
+
+// === GLOBAL STATE ===
+let currentPage = 'home';
+let locationRequestInProgress = false;
+let map = null;
+let userMarker = null;
+let accuracyCircle = null;
+let geoWatchId = null;
+let userLocation = null;
+let markers = [];
+let places = [];
+let customMarkers = [];
+let customMarkerIdCounter = 1;
+let discoveredMarkerIds = new Set(JSON.parse(localStorage.getItem("discoveredMarkers") || "[]"));
+let leafletReady = false;
+
+function getUserData() {
+  let data = JSON.parse(localStorage.getItem("driftUserData"));
+  if (!data) {
+    data = {
+      xp: 450,
+      nextLevelXp: 600,
+      level: 5,
+      placesFound: 12
+    };
+    localStorage.setItem("driftUserData", JSON.stringify(data));
+  }
+  return data;
+}
+
+function saveUserData(data) {
+  localStorage.setItem("driftUserData", JSON.stringify(data));
+}
+
+
+// Demo location (London) - used as fallback
+
+function setUserMarker(lat, lng) {
+  const latLng = [lat, lng];
+
+  if (!userMarker) {
+    userMarker = L.marker(latLng, {
+      icon: L.icon({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41]
+      })
+    }).addTo(map);
+  } else {
+    userMarker.setLatLng(latLng);
+  }
+
+  map.setView(latLng, 15);
+}
+
+
+const DEMO_LOCATION = {
+  lat: 51.5074,
+  lng: -0.1278,
+  name: 'London, UK'
+};
+
+// Place templates for generating nearby places
+const placeTemplates = [
+  { name: "The Hidden Courtyard", type: "architecture", crowd: "quiet", time: "10 min", description: "A peaceful 18th-century courtyard tucked behind an unassuming doorway.", context: "Locals sit here during lunch breaks", walkable: true, effort: "Easy" },
+  { name: "Elm Street Coffee", type: "cafe", crowd: "moderate", time: "20 min", description: "Neighborhood cafe where artists gather on rainy afternoons.", context: "Best pastries before 10am", walkable: true, effort: "Easy" },
+  { name: "Old Mill Gardens", type: "nature", crowd: "quiet", time: "45 min", description: "Overgrown gardens from a forgotten textile mill. Wild and peaceful.", context: "Quiet except Sunday mornings", walkable: true, effort: "Moderate" },
+  { name: "The Blue Door", type: "hidden", crowd: "quiet", time: "15 min", description: "An unmarked speakeasy-style bar behind a blue door in an alley.", context: "Opens only after 6pm", walkable: true, effort: "Easy" },
+  { name: "Riverside Observation Point", type: "nature", crowd: "moderate", time: "30 min", description: "Elevated spot with panoramic views, known mainly to joggers.", context: "Best at sunset", walkable: true, effort: "Moderate" },
+  { name: "St. Mary's Hidden Chapel", type: "architecture", crowd: "quiet", time: "20 min", description: "A small baroque chapel that most tourists walk right past.", context: "Open weekday mornings only", walkable: true, effort: "Easy" }
+];
+
+// Generate places near a location
+function generateNearbyPlaces(userLat, userLng) {
+  return placeTemplates.map((template, index) => {
+    const angle = (index / placeTemplates.length) * 2 * Math.PI;
+    const coordDistance = 0.002 + Math.random() * 0.003;
+
+    // Calculate actual distance in meters (roughly 111km per degree)
+    const distanceMeters = Math.round(coordDistance * 111000);
+
+    return {
+      id: index + 1,
+      ...template,
+      lat: userLat + Math.cos(angle) * coordDistance,
+      lng: userLng + Math.sin(angle) * coordDistance,
+      distanceValue: distanceMeters,
+      distance: distanceMeters < 1000
+        ? `${distanceMeters} m`
+        : `${(distanceMeters / 1000).toFixed(1)} km`
+    };
+  });
+}
+
+// Get place by ID from localStorage
+function getPlaceById(id) {
+  const places = JSON.parse(localStorage.getItem('driftPlaces') || '[]');
+  return places.find(p => p.id === parseInt(id));
+}
+
+// Save places and location to localStorage
+function savePlacesData(places, userLocation) {
+  if (places && places.length > 0) {
+    localStorage.setItem('driftPlaces', JSON.stringify(places));
+  }
+  if (userLocation) {
+    localStorage.setItem('driftUserLocation', JSON.stringify(userLocation));
+  }
+}
+
+// Load places from localStorage
+function loadPlacesData() {
+  const places = localStorage.getItem('driftPlaces');
+  const location = localStorage.getItem('driftUserLocation');
+  return {
+    places: places ? JSON.parse(places) : [],
+    userLocation: location ? JSON.parse(location) : null
+  };
+}
+
+/* ========================================
+   TOAST NOTIFICATIONS
+   ======================================== */
+
+let toastContainer = null;
+let pendingUndo = null;
+
+function ensureToastContainer() {
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.className = 'toast-container';
+    document.querySelector('.phone-container').appendChild(toastContainer);
+  }
+  return toastContainer;
+}
+
+function showToast(message, type = 'info', undoCallback = null, duration = 5000) {
+  const container = ensureToastContainer();
+
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+
+  let html = `<span class="toast-message">${message}</span>`;
+  if (undoCallback) {
+    html += `<button class="toast-undo" onclick="handleToastUndo()">Undo</button>`;
+    pendingUndo = undoCallback;
+  }
+  toast.innerHTML = html;
+
+  // Add click handler to dismiss toast
+  toast.addEventListener('click', (e) => {
+    if (!e.target.classList.contains('toast-undo')) {
+      dismissToast(toast, undoCallback);
+    }
+  });
+
+  container.appendChild(toast);
+
+  const timeoutId = setTimeout(() => {
+    dismissToast(toast, undoCallback);
+  }, duration);
+
+  // Store timeout ID for potential cancellation
+  toast._timeoutId = timeoutId;
+
+  return toast;
+}
+
+function dismissToast(toast, undoCallback) {
+  if (toast._timeoutId) {
+    clearTimeout(toast._timeoutId);
+  }
+  toast.style.animation = 'toastOut 0.3s ease-out forwards';
+  setTimeout(() => {
+    toast.remove();
+    if (pendingUndo === undoCallback) pendingUndo = null;
+  }, 300);
+}
+
+function handleToastUndo() {
+  if (pendingUndo) {
+    pendingUndo();
+    pendingUndo = null;
+  }
+  // Remove all toasts
+  const container = ensureToastContainer();
+  container.innerHTML = '';
+}
+
+/* ========================================
+   CONFIRMATION DIALOG
+   ======================================== */
+
+function showConfirmDialog(title, message, confirmText, onConfirm) {
+  const overlay = document.createElement('div');
+  overlay.className = 'confirm-dialog-overlay';
+  overlay.innerHTML = `
+    <div class="confirm-dialog">
+      <h3>${title}</h3>
+      <p>${message}</p>
+      <div class="confirm-dialog-actions">
+        <button class="cancel-btn" onclick="closeConfirmDialog()">Cancel</button>
+        <button class="confirm-btn" onclick="executeConfirmDialog()">${confirmText}</button>
+      </div>
+    </div>
+  `;
+
+  overlay.onclick = (e) => {
+    if (e.target === overlay) closeConfirmDialog();
+  };
+
+  window._confirmCallback = onConfirm;
+  document.querySelector('.phone-container').appendChild(overlay);
+}
+
+function closeConfirmDialog() {
+  const overlay = document.querySelector('.confirm-dialog-overlay');
+  if (overlay) overlay.remove();
+  window._confirmCallback = null;
+}
+
+function executeConfirmDialog() {
+  if (window._confirmCallback) {
+    window._confirmCallback();
+  }
+  closeConfirmDialog();
+}
+
+/* ========================================
+   WALK TIME CALCULATION
+   ======================================== */
+
+function calculateWalkTime(distanceMeters) {
+  // Average walking speed: 5 km/h = 83.33 m/min
+  const walkingSpeedMeterPerMin = 83.33;
+  const minutes = Math.round(distanceMeters / walkingSpeedMeterPerMin);
+
+  if (minutes < 1) return '< 1 min';
+  if (minutes < 60) return `${minutes} min`;
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMins = minutes % 60;
+  if (remainingMins === 0) return `${hours} hr`;
+  return `${hours} hr ${remainingMins} min`;
+}
+
+/* ========================================
+   VISITED PLACES TRACKING
+   ======================================== */
+
+function addToVisitedPlaces(placeId, placeData) {
+  if (!placeData) return;
+  const visited = JSON.parse(localStorage.getItem('driftVisitedPlaces') || '[]');
+
+  // Check if already visited
+  if (visited.some(p => p.id === placeId)) return;
+  
+  const visitedPlace = {
+    id: placeId,
+    name: placeData.name,
+    type: placeData.type,
+    distance: placeData.distance,
+    visitedAt: new Date().toISOString()
+	
+  };
+	
+  visited.unshift(visitedPlace);
+  localStorage.setItem('driftVisitedPlaces', JSON.stringify(visited));
+
+  // Check for rewards
+  checkDiscoveryRewards(visited.length);
+  
+}
+
+function checkDiscoveryRewards(totalVisited) {
+ const milestones = [2, 3, 5, 7, 10];
+  if (milestones.includes(totalVisited)) {
+    showToast(`Congratulations! You've discovered ${totalVisited} places!`, 'success');
+	awardXP(50);
+  }
+}
+
+function formatVisitedDate(isoString) {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return date.toLocaleDateString();
+}
+
+/* ========================================
+   MARKER MANAGEMENT
+   ======================================== */
+
+function viewPlaceFromMarker(placeId) {
+  // Close the popup first
+  map.closePopup();
+
+  // Store place data if needed
+  const place = places.find(p => p.id === parseInt(placeId) || p.id === placeId);
+  if (place) {
+    const walkTime = calculateWalkTime(place.distanceValue || parseFloat(place.distance) * 1000);
+    sessionStorage.setItem('currentPlace', JSON.stringify({
+      id: place.id,
+      name: place.name,
+      type: place.type || 'Place',
+      description: place.description || place.context,
+      context: place.context,
+      distance: place.distance,
+      crowd: place.crowd,
+      time: walkTime,
+      effort: place.effort || 'Moderate',
+      lat: place.lat,
+      lng: place.lng
+    }));
+  }
+
+  window.location.hash = `#place?id=${placeId}`;
+}
+
+function confirmDeleteMarker(placeId) {
+  map.closePopup();
+
+  showConfirmDialog(
+    'Delete Marker',
+    'Are you sure you want to remove this place from your map? This cannot be undone.',
+    'Delete',
+    () => deleteMarker(placeId)
+  );
+}
+
+function deleteMarker(placeId) {
+  // Find and remove the marker
+  const marker = markers.find(m => m._placeId === placeId || m._placeId === parseInt(placeId));
+  if (marker) {
+    const placeData = marker._placeData;
+    map.removeLayer(marker);
+    markers = markers.filter(m => m !== marker);
+
+    // Remove from places array
+    places = places.filter(p => p.id !== placeId && p.id !== parseInt(placeId));
+
+    // Update localStorage
+    savePlacesData(places, userLocation);
+
+    // Show toast with undo option
+    showToast('Marker removed', 'info', () => {
+      // Undo: restore the place
+      if (placeData) {
+        places.push(placeData);
+        savePlacesData(places, userLocation);
+        renderMarkers();
+        showToast('Marker restored', 'success');
+      }
+    });
+  }
+}
+
+/* ========================================
+   HASH-BASED ROUTING
+   ======================================== */
+
+// Handle page changes
+function handlePageChange() {
+  const hash = window.location.hash.slice(1) || 'home';
+  const [page, query] = hash.split('?');
+
+  if (currentPage === 'map') {
+  if (geoWatchId !== null) {
+    navigator.geolocation.clearWatch(geoWatchId);
+    geoWatchId = null;
+  }
+
+  if (map) {
+    map.remove();
+    map = null;
+  }
+
+  userMarker = null;
+  accuracyCircle = null;
+}
+  
+
+  // Hide all pages
+  document.querySelectorAll('.page-view').forEach(p => p.style.display = 'none');
+
+  // Show target page
+  const pageEl = document.getElementById('page-' + page);
+  if (pageEl) {
+    pageEl.style.display = 'block';
+
+    // Add full-height class for map page
+    const appContent = document.getElementById('app-content');
+    if (page === 'map') {
+  const mapPage = document.getElementById('page-map');
+  mapPage.style.display = 'block';
+
+  requestAnimationFrame(() => {
+    initializeMap();
+
+    if (userLocation) {
+      updateUserMarker(userLocation.lat, userLocation.lng);
+      renderMarkers();
+    }
+  });
+}
+ else {
+      appContent.classList.remove('full-height');
+    }
+  }
+
+  // Update bottom nav active state
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.page === page);
+  });
+
+  // Initialize page
+  currentPage = page;
+  if (page === "home") {
+    syncHomeUI();
+  }
+
+  if (page === 'explore') initExplore();
+  if (page === 'nearby') initNearby();
+  if (page === 'place' && query) {
+    const params = new URLSearchParams(query);
+    initPlace(params.get('id'));
+  }
+  if (page === 'saved') initSaved();
+}
+
+// Listen for page changes
+window.addEventListener('hashchange', handlePageChange);
+window.addEventListener('load', handlePageChange);
+
+/* ========================================
+   HOME PAGE FUNCTIONS (home.js)
+   ======================================== */
+
+/* ========================================
+   MAP PAGE FUNCTIONS (map.js)
+   ======================================== */
+
+// Check when Leaflet is loaded
+(function checkLeaflet() {
+  if (typeof L !== 'undefined') {
+    leafletReady = true;
+    console.log('Leaflet loaded successfully');
+  } else {
+    setTimeout(checkLeaflet, 50);
+  }
+})();
+
+function initMap() {
+  const data = loadPlacesData();
+
+  if (data.userLocation && data.places.length > 0) {
+    userLocation = data.userLocation;
+    places = data.places;
+    hideGPSPrompt();
+    showLoading('Loading map...');
+    initializeMap();
+  } 
+  
+}
+
+function requestRealLocation() { 
+
+  if (locationRequestInProgress) return; 
+  locationRequestInProgress = true;
+
+  showLoading("Getting your location...");
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      userLocation = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude
+      };
+
+      hideLoading();
+      hideGPSPrompt();
+
+      initializeMap();
+      beginWatch();
+    },
+    err => {
+      hideLoading();
+      locationRequestInProgress = false; 
+      alert("Location access denied");
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 15000
+    }
+  );
+
+}
+function beginWatch() {
+  geoWatchId = navigator.geolocation.watchPosition(pos => {
+    const latLng = [pos.coords.latitude, pos.coords.longitude];
+
+    if (!userMarker) {
+      userMarker = L.circleMarker(latLng, {
+        radius: 6,
+        color: '#4A6FA5',
+        fillOpacity: 1
+      }).addTo(map);
+    } else {
+      userMarker.setLatLng(latLng);
+	  checkMarkerDiscovery(latLng);
+    }
+
+  });
+}
+
+function enableAddMarkerMode() {
+  if (!map) return;
+
+  let addMarkerMode = false;
+  let touchTimer = null;
+
+  const btn = document.getElementById("addMarkerBtn");
+  const container = map.getContainer();
+
+  btn.onclick = () => {
+    addMarkerMode = !addMarkerMode;
+    btn.classList.toggle("active", addMarkerMode);
+    if (addMarkerMode) {
+      showToast("Tap and hold to add a marker", "info");
+    }
+  };
+
+  container.addEventListener("touchstart", e => {
+    if (!addMarkerMode || e.touches.length !== 1) return;
+
+    const latLng = map.mouseEventToLatLng(e.touches[0]);
+
+    touchTimer = setTimeout(() => {
+      // Create a custom marker with animation
+      const markerIcon = L.divIcon({
+        className: 'place-marker-wrapper',
+        html: `<div class="place-marker custom-marker new-marker" data-custom="true"></div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+
+      const marker = L.marker(latLng, { icon: markerIcon }).addTo(map);
+      marker._customId = Date.now();
+      customMarkers.push(marker);
+
+      // Create popup with delete option
+      marker.bindPopup(`
+        <div class="marker-popup">
+          <div class="marker-popup-header">
+            <span class="marker-popup-name">Custom Marker</span>
+          </div>
+          <div class="marker-popup-type">Your personal marker</div>
+          <div class="marker-popup-actions">
+            <button class="marker-popup-btn delete-btn" onclick="deleteCustomMarker(${marker._customId})">Delete</button>
+          </div>
+        </div>
+      `, { className: 'custom-popup' });
+
+      // Show success toast
+      showToast("Marker added!", "success");
+
+    }, 400); // Increased from 1ms to 400ms to prevent accidental markers
+  });
+
+  ["touchend", "touchmove", "touchcancel"].forEach(evt =>
+    container.addEventListener(evt, () => clearTimeout(touchTimer))
+  );
+}
+
+function deleteCustomMarker(markerId) {
+  const marker = customMarkers.find(m => m._customId === markerId);
+  if (marker) {
+    map.closePopup();
+    map.removeLayer(marker);
+    customMarkers = customMarkers.filter(m => m !== marker);
+    showToast("Marker removed", "info");
+  }
+}
+
+
+
+
+
+function checkMarkerDiscovery(userLatLng) {
+  customMarkers.forEach(marker => {
+    if (discoveredMarkerIds.has(marker._customId)) return;
+
+    const dist = map.distance(userLatLng, marker.getLatLng());
+    if (dist <= 10) {
+      discoverMarker(marker);
+    }
+  });
+}
+
+function awardXP(amount) {
+  const data = getUserData();
+
+  data.xp += amount;
+  data.placesFound++;
+
+  if (data.xp >= data.nextLevelXp) {
+    data.xp -= data.nextLevelXp;
+    data.level++;
+    data.nextLevelXp += 200;
+  }
+
+  saveUserData(data);
+  syncHomeUI();
+}
+
+
+function discoverMarker(marker) {
+  discoveredMarkerIds.add(marker._customId);
+  localStorage.setItem("discoveredMarkers", JSON.stringify([...discoveredMarkerIds]));
+
+  marker.bindPopup("🎉 You have successfully discovered a new place").openPopup();
+	
+  awardXP(50);
+
+  // Add to visited places with timestamp
+  addToVisitedPlaces(marker._placeId, places.find(p => p.id === marker._placeId));
+
+  // Remove marker after brief celebration
+  setTimeout(() => {
+    map.removeLayer(marker);
+    markers = markers.filter(m => m !== marker);
+    showToast("Place discovered and added to your visited places!", "success");
+  }, 2000);
+}
+
+function syncHomeUI() {
+  const data = getUserData();
+
+  document.getElementById("current-xp").textContent = data.xp;
+  document.getElementById("next-level-xp").textContent = data.nextLevelXp;
+  document.getElementById("user-level").textContent = data.level;
+  document.getElementById("level-badge").textContent = data.level;
+  document.getElementById("places-found").textContent = data.placesFound;
+
+  const percent = Math.min((data.xp / data.nextLevelXp) * 100, 100);
+  document.getElementById("xp-bar-fill").style.width = percent + "%";
+}
+
+// Use demo location (London)
+function useDemoLocation() {
+  showLoading(`Loading ${DEMO_LOCATION.name}...`);
+
+  userLocation = {
+    lat: DEMO_LOCATION.lat,
+    lng: DEMO_LOCATION.lng,
+    name: DEMO_LOCATION.name
+  };
+
+  places = generateNearbyPlaces(userLocation.lat, userLocation.lng);
+  savePlacesData(places, userLocation);
+
+  hideGPSPrompt();
+
+  // Go to map FIRST
+  window.location.hash = "#map";
+
+  // Wait for page to be visible
+  requestAnimationFrame(() => {
+    initializeMap();
+    updateUserMarker(userLocation.lat, userLocation.lng);
+    renderMarkers();
+    hideLoading();
+  });
+}
+
+// Update user marker
+function updateUserMarker(lat, lng) {
+  const latLng = [lat, lng];
+
+  if (!userMarker) {
+    const userIcon = L.divIcon({
+      className: 'user-marker',
+      html: '<div class="located-animation"></div>',
+      iconSize: [17, 17],
+      iconAnchor: [8.5, 8.5]
+    });
+    userMarker = L.marker(latLng, { icon: userIcon }).addTo(map);
+  } else {
+    userMarker.setLatLng(latLng);
+  }
+
+  map.setView(latLng, 16);
+}
+
+// Show/hide UI elements
+function showLoading(text) {
+  const overlay = document.getElementById('loading-overlay');
+  overlay.style.display = 'flex';
+  overlay.querySelector('.loading-text').textContent = text;
+}
+
+function hideLoading() {
+  document.getElementById('loading-overlay').style.display = 'none';
+}
+
+function hideGPSPrompt() {
+  document.getElementById('gps-prompt').style.display = 'none';
+}
+
+// Initialize map
+function initializeMap() {
+  if (!userLocation) return;
+
+  if (!map) {
+    map = L.map('map', {
+      zoomControl: false
+    }).setView(
+      [userLocation.lat, userLocation.lng],
+      16
+    );
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+  }
+
+  // 🔑 CRITICAL: force redraw
+  setTimeout(() => {
+    map.invalidateSize();
+  }, 0);
+  enableAddMarkerMode();
+}
+
+// Render place markers
+function renderMarkers() {
+  if (!map) return;
+
+  // Clear old markers
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+
+  const discovered = JSON.parse(localStorage.getItem("discoveredPlaces") || "[]");
+
+  places.forEach((place, index) => {
+    const placeId = place.id ?? `${place.lat}_${place.lng}_${index}`;
+    const isDiscovered = discovered.includes(placeId);
+
+    // Create custom icon
+    const markerIcon = L.divIcon({
+      className: 'place-marker-wrapper',
+      html: `<div class="place-marker ${isDiscovered ? 'discovered' : ''}" data-place-id="${placeId}"></div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    });
+
+    const marker = L.marker([place.lat, place.lng], { icon: markerIcon }).addTo(map);
+    marker._placeId = placeId;
+    marker._placeData = place;
+
+    // Calculate walk time
+    const walkTime = calculateWalkTime(place.distanceValue || parseFloat(place.distance) * 1000);
+
+    // Create popup content with place details
+    const popupContent = `
+      <div class="marker-popup">
+        <div class="marker-popup-header">
+          <span class="marker-popup-name">${place.name}</span>
+          <span class="crowd-badge ${place.crowd}">${place.crowd}</span>
+        </div>
+        <div class="marker-popup-type">${place.type || 'Place'}</div>
+        <div class="marker-popup-meta">
+          <span class="marker-popup-time">~${walkTime} walk</span>
+        </div>
+        ${isDiscovered ? '<div class="marker-popup-discovered">Already discovered</div>' : ''}
+        <div class="marker-popup-actions">
+          <button class="marker-popup-btn view-btn" onclick="viewPlaceFromMarker('${placeId}')">View Details</button>
+          <button class="marker-popup-btn delete-btn" onclick="confirmDeleteMarker('${placeId}')">Delete</button>
+        </div>
+      </div>
+    `;
+
+    marker.bindPopup(popupContent, {
+      maxWidth: 250,
+      className: 'custom-popup',
+      closeButton: true
+    });
+
+    markers.push(marker);
+  });
+}
+
+function destroyMap() {
+  if (map) {
+    map.remove();
+    map = null;
+  }
+}
+
+// Render suggestions
+function renderSuggestions() {
+  const list = document.getElementById('suggestions-list');
+  list.innerHTML = places.slice(0, 4).map(place => `
+    <a href="#place?id=${place.id}" class="suggestion-card">
+      <div class="suggestion-top">
+        <span class="suggestion-name">${place.name}</span>
+        <span class="crowd-badge ${place.crowd}">${place.crowd}</span>
+      </div>
+      <div class="suggestion-meta">
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          ${place.distance}
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          </svg>
+          ${place.time} visit
+        </span>
+      </div>
+    </a>
+  `).join('');
+}
+
+// Center on user location
+function centerOnUser() {
+  if (map && userLocation) {
+    map.setView([userLocation.lat, userLocation.lng], 16);
+    if (userMarker) userMarker.openPopup();
+  }
+}
+
+// Toggle bottom panel
+function togglePanel() {
+  document.getElementById('bottom-panel').classList.toggle('collapsed');
+}
+
+/* ========================================
+   MAP SEARCH FUNCTIONS
+   ======================================== */
+
+let highlightedMarkers = [];
+
+function searchMapPlaces(query) {
+  const resultsEl = document.getElementById('map-search-results');
+  const clearBtn = document.getElementById('map-search-clear');
+
+  // Clear previous highlights
+  clearMapHighlights();
+
+  if (!query || query.length < 2) {
+    resultsEl.style.display = 'none';
+    clearBtn.classList.remove('visible');
+    return;
+  }
+
+  clearBtn.classList.add('visible');
+
+  // Search through places
+  const lowerQuery = query.toLowerCase();
+  const matches = places.filter(p =>
+    p.name.toLowerCase().includes(lowerQuery) ||
+    (p.type && p.type.toLowerCase().includes(lowerQuery))
+  );
+
+  // Show results count
+  resultsEl.style.display = 'block';
+  resultsEl.textContent = matches.length === 0
+    ? 'No places found'
+    : `${matches.length} place${matches.length !== 1 ? 's' : ''} found`;
+
+  // Highlight matching markers
+  if (matches.length > 0) {
+    highlightMatchingMarkers(matches);
+
+    // If only one match, center on it
+    if (matches.length === 1) {
+      const place = matches[0];
+      map.setView([place.lat, place.lng], 17);
+    }
+  }
+}
+
+function highlightMatchingMarkers(matchingPlaces) {
+  const matchIds = new Set(matchingPlaces.map(p => p.id));
+
+  markers.forEach(marker => {
+    const el = marker.getElement ? marker.getElement() : null;
+    const placeMarker = el?.querySelector('.place-marker');
+
+    if (matchIds.has(marker._placeId) || matchIds.has(parseInt(marker._placeId))) {
+      // Highlight this marker
+      if (placeMarker) {
+        placeMarker.style.background = 'var(--accent-warm)';
+        placeMarker.style.transform = 'scale(1.3)';
+        placeMarker.style.zIndex = '1000';
+      }
+      highlightedMarkers.push(marker);
+    } else {
+      // Dim this marker
+      if (placeMarker) {
+        placeMarker.style.opacity = '0.4';
+      }
+    }
+  });
+}
+
+function clearMapHighlights() {
+  markers.forEach(marker => {
+    const el = marker.getElement ? marker.getElement() : null;
+    const placeMarker = el?.querySelector('.place-marker');
+    if (placeMarker) {
+      placeMarker.style.background = '';
+      placeMarker.style.transform = '';
+      placeMarker.style.opacity = '';
+      placeMarker.style.zIndex = '';
+    }
+  });
+  highlightedMarkers = [];
+}
+
+function clearMapSearch() {
+  const input = document.getElementById('map-search-input');
+  const resultsEl = document.getElementById('map-search-results');
+  const clearBtn = document.getElementById('map-search-clear');
+
+  input.value = '';
+  resultsEl.style.display = 'none';
+  clearBtn.classList.remove('visible');
+  clearMapHighlights();
+}
+
+/* ========================================
+   MAP FILTER FUNCTIONS
+   ======================================== */
+
+let currentMapFilter = 'all';
+
+function toggleMapFilters() {
+  const filtersContainer = document.getElementById('map-filters');
+  const filterBtn = document.getElementById('filter-toggle-btn');
+
+  filtersContainer.classList.toggle('visible');
+  filterBtn.classList.toggle('active');
+}
+
+function filterMapPlaces(filterType, clickedBtn) {
+  currentMapFilter = filterType;
+
+  // Update active state on chips
+  const chips = document.querySelectorAll('.map-filter-chip');
+  chips.forEach(chip => chip.classList.remove('active'));
+  if (clickedBtn) clickedBtn.classList.add('active');
+
+  // Show/hide markers based on filter
+  markers.forEach(marker => {
+    const place = marker._placeData;
+    if (!place) return;
+
+    const shouldShow = filterType === 'all' || place.type === filterType;
+
+    if (shouldShow) {
+      if (!map.hasLayer(marker)) {
+        marker.addTo(map);
+      }
+    } else {
+      if (map.hasLayer(marker)) {
+        map.removeLayer(marker);
+      }
+    }
+  });
+}
+
+/* ========================================
+   EXPLORE PAGE FUNCTIONS (explore.js)
+   ======================================== */
+
+// Explore state
+let explorePlaces = [];
+let savedPlaceIds = new Set();
+let currentIndex = 0;
+let currentPlace = null;
+
+function initExplore() {
+  loadExplorePlaces();
+}
+
+// Load places from map's localStorage
+function loadExplorePlaces() {
+  const placesData = localStorage.getItem('driftPlaces');
+
+  if (!placesData) {
+    showNoPlacesPrompt();
+    return;
+  }
+
+  try {
+    explorePlaces = JSON.parse(placesData);
+
+    if (!explorePlaces || explorePlaces.length === 0) {
+      showNoPlacesPrompt();
+      return;
+    }
+
+    loadSavedStatus();
+    showPlace();
+  } catch (e) {
+    console.error('Error loading places:', e);
+    showNoPlacesPrompt();
+  }
+}
+
+// Load saved status from driftUserData
+function loadSavedStatus() {
+  try {
+    const userDataStr = JSON.parse(localStorage.getItem('driftUserData') || '{}');
+    const savedPlaces = userDataStr.savedPlaces || [];
+    savedPlaceIds = new Set(savedPlaces.map(p => p.id));
+  } catch (e) {
+    console.error('Error loading saved status:', e);
+    savedPlaceIds = new Set();
+  }
+}
+
+// Check if place is saved
+function isPlaceSaved(placeId) {
+  return savedPlaceIds.has(placeId);
+}
+
+// Render current place with saved indicator
+function showPlace() {
+  if (!explorePlaces || explorePlaces.length === 0) {
+    showNoPlacesPrompt();
+    return;
+  }
+
+  currentPlace = explorePlaces[currentIndex % explorePlaces.length];
+  const isSaved = isPlaceSaved(currentPlace.id);
+
+  // Calculate walk time from distance
+  const distanceMeters = currentPlace.distanceValue || parseFloat(currentPlace.distance) * 1000 || 500;
+  const walkTime = calculateWalkTime(distanceMeters);
+
+  const content = document.getElementById('explore-content');
+  content.innerHTML = `
+    <div class="explore-card" id="current-explore-card">
+      ${isSaved ? `
+        <div class="saved-indicator">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+          </svg>
+          Saved
+        </div>
+      ` : ''}
+      <div class="explore-card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+      </div>
+      <span class="crowd-badge ${currentPlace.crowd}" style="margin-bottom: 12px;">${currentPlace.crowd}</span>
+      <h3>${currentPlace.name}</h3>
+      <p>${currentPlace.context}</p>
+      <div class="explore-meta">
+        <div class="explore-distance">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          </svg>
+          <span>${currentPlace.distance}</span>
+        </div>
+        <div class="explore-walk-time">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span>~${walkTime} walk</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('explore-actions').style.display = 'flex';
+  updateExploreSaveButton();
+
+  // Setup swipe gesture
+  setupExploreSwipe();
+}
+
+// Prompt user to visit map first
+function showNoPlacesPrompt() {
+  const content = document.getElementById('explore-content');
+  content.innerHTML = `
+    <div class="no-location">
+      <div class="explore-card-icon" style="margin: 0 auto 24px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+      </div>
+      <h3>Discover Your Area</h3>
+      <p>Visit the Map to find places near you. Then come back here for spontaneous suggestions!</p>
+      <button class="btn btn-primary" onclick="window.location.hash='#map'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+          <line x1="8" y1="2" x2="8" y2="18"/>
+          <line x1="16" y1="6" x2="16" y2="22"/>
+        </svg>
+        Explore Map
+      </button>
+    </div>
+  `;
+  document.getElementById('explore-actions').style.display = 'none';
+}
+
+// Skip to next place with optional swipe animation
+function nextPlace(useSwipeAnimation = false) {
+  const content = document.getElementById('explore-content');
+  const card = content.querySelector('.explore-card');
+
+  if (card && useSwipeAnimation) {
+    // Trigger swipe animation
+    card.classList.add('swipe-left');
+    setTimeout(() => {
+      currentIndex++;
+      showPlace();
+    }, 300);
+  } else {
+    currentIndex++;
+    if (card) {
+      // Trigger fade animation
+      card.style.animation = 'none';
+      card.offsetHeight; // Trigger reflow
+      card.style.animation = 'fadeIn 0.4s ease';
+    }
+    showPlace();
+  }
+}
+
+// Setup swipe gesture for explore cards
+function setupExploreSwipe() {
+  const card = document.getElementById('current-explore-card');
+  if (!card) return;
+
+  let startX = 0;
+  let currentX = 0;
+  let isDragging = false;
+
+  card.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    isDragging = true;
+    card.style.transition = 'none';
+  }, { passive: true });
+
+  card.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    currentX = e.touches[0].clientX;
+    const diff = currentX - startX;
+
+    // Only allow swiping left
+    if (diff < 0) {
+      card.style.transform = `translateX(${diff}px)`;
+      card.style.opacity = 1 - Math.abs(diff) / 300;
+    }
+  }, { passive: true });
+
+  card.addEventListener('touchend', () => {
+    if (!isDragging) return;
+    isDragging = false;
+
+    const diff = currentX - startX;
+    card.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+
+    // If swiped more than 100px left, skip to next
+    if (diff < -100) {
+      nextPlace(true);
+    } else {
+      // Reset position
+      card.style.transform = 'translateX(0)';
+      card.style.opacity = '1';
+    }
+
+    startX = 0;
+    currentX = 0;
+  }, { passive: true });
+}
+
+// Navigate to place detail
+function goToPlace() {
+  if (currentPlace) {
+    window.location.hash = `#place?id=${currentPlace.id}`;
+  }
+}
+
+// Toggle save for later on explore page
+function toggleExploreSave() {
+  if (!currentPlace) return;
+
+  try {
+    const userDataStr = JSON.parse(localStorage.getItem('driftUserData') || '{}');
+    userDataStr.savedPlaces = userDataStr.savedPlaces || [];
+
+    const isCurrentlySaved = savedPlaceIds.has(currentPlace.id);
+
+    if (isCurrentlySaved) {
+      // Remove from saved
+      userDataStr.savedPlaces = userDataStr.savedPlaces.filter(p => p.id !== currentPlace.id);
+      savedPlaceIds.delete(currentPlace.id);
+    } else {
+      // Add to saved
+      const savedPlace = {
+        id: currentPlace.id,
+        name: currentPlace.name,
+        type: currentPlace.type,
+        context: currentPlace.context,
+        distance: currentPlace.distance,
+        crowd: currentPlace.crowd,
+        savedAt: new Date().toISOString()
+      };
+      userDataStr.savedPlaces.push(savedPlace);
+      savedPlaceIds.add(currentPlace.id);
+    }
+
+    localStorage.setItem('driftUserData', JSON.stringify(userDataStr));
+
+    // Update button state
+    updateExploreSaveButton();
+
+    // Update saved page if it exists
+    if (typeof loadSavedPlaces === 'function') {
+      loadSavedPlaces();
+    }
+  } catch (e) {
+    console.error('Error toggling save:', e);
+  }
+}
+
+// Update save button state
+function updateExploreSaveButton() {
+  if (!currentPlace) return;
+
+  const isSaved = savedPlaceIds.has(currentPlace.id);
+  const btn = document.getElementById('explore-save-btn');
+  const text = document.getElementById('explore-save-text');
+  const svg = btn.querySelector('svg');
+
+  if (isSaved) {
+    text.textContent = 'Saved';
+    svg.setAttribute('fill', 'currentColor');
+  } else {
+    text.textContent = 'Save for Later';
+    svg.setAttribute('fill', 'none');
+  }
+}
+
+/* ========================================
+   NEARBY PAGE FUNCTIONS (nearby.js)
+   ======================================== */
+
+// Fake places data
+const FAKE_PLACES = [
+  {
+    id: 'nearby-1',
+    name: 'The Hidden Garden Cafe',
+    type: 'cafe',
+    category: 'Cafe',
+    description: 'Cozy cafe tucked away in a quiet courtyard with excellent coffee and homemade pastries.',
+    distance: '0.3 km',
+    distanceValue: 300,
+    crowd: 'quiet'
+  },
+  {
+    id: 'nearby-2',
+    name: 'Riverside Walking Trail',
+    type: 'nature',
+    category: 'Nature',
+    description: 'Scenic trail along the river with beautiful views and peaceful atmosphere.',
+    distance: '0.5 km',
+    distanceValue: 500,
+    crowd: 'moderate'
+  },
+  {
+    id: 'nearby-3',
+    name: 'Old Town Bookshop',
+    type: 'culture',
+    category: 'Culture',
+    description: 'Independent bookstore with rare finds and a charming reading nook.',
+    distance: '0.7 km',
+    distanceValue: 700,
+    crowd: 'quiet'
+  },
+  {
+    id: 'nearby-4',
+    name: 'Secret Courtyard',
+    type: 'hidden',
+    category: 'Hidden Gem',
+    description: 'Quiet courtyard behind historic buildings, perfect for a peaceful break.',
+    distance: '0.4 km',
+    distanceValue: 400,
+    crowd: 'quiet'
+  },
+  {
+    id: 'nearby-5',
+    name: 'Artisan Coffee Roasters',
+    type: 'cafe',
+    category: 'Cafe',
+    description: 'Local coffee roastery with specialty brews and a industrial-chic vibe.',
+    distance: '0.9 km',
+    distanceValue: 900,
+    crowd: 'busy'
+  },
+  {
+    id: 'nearby-6',
+    name: 'Botanical Gardens',
+    type: 'nature',
+    category: 'Nature',
+    description: 'Small but well-maintained gardens with exotic plants and serene ponds.',
+    distance: '1.2 km',
+    distanceValue: 1200,
+    crowd: 'moderate'
+  },
+  {
+    id: 'nearby-7',
+    name: 'Historic Gallery',
+    type: 'culture',
+    category: 'Culture',
+    description: 'Free art gallery showcasing local artists in a beautiful old building.',
+    distance: '0.6 km',
+    distanceValue: 600,
+    crowd: 'quiet'
+  },
+  {
+    id: 'nearby-8',
+    name: 'Rooftop Viewpoint',
+    type: 'hidden',
+    category: 'Hidden Gem',
+    description: 'Little-known rooftop with panoramic city views, accessible through an old building.',
+    distance: '0.8 km',
+    distanceValue: 800,
+    crowd: 'quiet'
+  },
+  {
+    id: 'nearby-9',
+    name: 'City Park Meadow',
+    type: 'nature',
+    category: 'Nature',
+    description: 'Open meadow perfect for picnics and watching the sunset.',
+    distance: '1.0 km',
+    distanceValue: 1000,
+    crowd: 'moderate'
+  },
+  {
+    id: 'nearby-10',
+    name: 'Underground Jazz Bar',
+    type: 'hidden',
+    category: 'Hidden Gem',
+    description: 'Intimate basement jazz venue with live music on weekends.',
+    distance: '0.7 km',
+    distanceValue: 700,
+    crowd: 'busy'
+  }
+];
+
+// Nearby state
+let nearbyPlaces = [...FAKE_PLACES];
+let currentFilter = 'all';
+let nearbyAvedPlaceIds = new Set();
+
+// Initialize nearby page
+function initNearby() {
+  loadNearbySavedStatus();
+  renderNearbyPlaces();
+  setupFilterListeners();
+}
+
+// Load saved status from localStorage
+function loadNearbySavedStatus() {
+  try {
+    const userDataStr = JSON.parse(localStorage.getItem('driftUserData') || '{}');
+    const savedPlaces = userDataStr.savedPlaces || [];
+    nearbyAvedPlaceIds = new Set(savedPlaces.map(p => p.id));
+  } catch (e) {
+    console.error('Error loading saved status:', e);
+    nearbyAvedPlaceIds = new Set();
+  }
+}
+
+// Nearby search state
+let nearbySearchQuery = '';
+
+// Setup filter button listeners
+function setupFilterListeners() {
+  const filterChips = document.querySelectorAll('#filter-chips .filter-chip');
+  filterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      // Remove active class from all chips
+      filterChips.forEach(c => c.classList.remove('active'));
+      // Add active class to clicked chip
+      chip.classList.add('active');
+      // Update filter
+      currentFilter = chip.dataset.filter;
+      // Show reset button if not 'all'
+      updateResetButton();
+      // Re-render places
+      renderNearbyPlaces();
+    });
+  });
+}
+
+function updateResetButton() {
+  const resetBtn = document.getElementById('reset-filters');
+  if (resetBtn) {
+    resetBtn.style.display = (currentFilter !== 'all' || nearbySearchQuery) ? 'block' : 'none';
+  }
+}
+
+function resetFilters() {
+  // Reset filter to 'all'
+  currentFilter = 'all';
+  nearbySearchQuery = '';
+
+  // Clear search input
+  const searchInput = document.getElementById('nearby-search-input');
+  if (searchInput) searchInput.value = '';
+
+  const clearBtn = document.getElementById('nearby-search-clear');
+  if (clearBtn) clearBtn.classList.remove('visible');
+
+  // Reset filter chips
+  const filterChips = document.querySelectorAll('#filter-chips .filter-chip');
+  filterChips.forEach(c => c.classList.remove('active'));
+  const allChip = document.querySelector('#filter-chips .filter-chip[data-filter="all"]');
+  if (allChip) allChip.classList.add('active');
+
+  // Hide reset button
+  updateResetButton();
+
+  // Re-render
+  renderNearbyPlaces();
+}
+
+function searchNearbyPlaces(query) {
+  nearbySearchQuery = query.toLowerCase();
+
+  const clearBtn = document.getElementById('nearby-search-clear');
+  if (clearBtn) {
+    clearBtn.classList.toggle('visible', query.length > 0);
+  }
+
+  updateResetButton();
+  renderNearbyPlaces();
+}
+
+function clearNearbySearch() {
+  const searchInput = document.getElementById('nearby-search-input');
+  if (searchInput) searchInput.value = '';
+
+  const clearBtn = document.getElementById('nearby-search-clear');
+  if (clearBtn) clearBtn.classList.remove('visible');
+
+  nearbySearchQuery = '';
+  updateResetButton();
+  renderNearbyPlaces();
+}
+
+// Render nearby places based on current filter and search
+function renderNearbyPlaces() {
+  const container = document.getElementById('nearby-list');
+
+  // Filter places by category
+  let filteredPlaces = nearbyPlaces;
+  if (currentFilter !== 'all') {
+    filteredPlaces = nearbyPlaces.filter(p => p.type === currentFilter);
+  }
+
+  // Filter by search query
+  if (nearbySearchQuery) {
+    filteredPlaces = filteredPlaces.filter(p =>
+      p.name.toLowerCase().includes(nearbySearchQuery) ||
+      p.description.toLowerCase().includes(nearbySearchQuery) ||
+      p.category.toLowerCase().includes(nearbySearchQuery)
+    );
+  }
+
+  // Sort by distance
+  filteredPlaces.sort((a, b) => a.distanceValue - b.distanceValue);
+
+  // Render
+  if (filteredPlaces.length === 0) {
+    container.innerHTML = `
+      <div class="nearby-empty">
+        <div class="nearby-empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+        </div>
+        <h3>No places found</h3>
+        <p>Try selecting a different filter to see more places.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filteredPlaces.map(place => {
+    const isSaved = nearbyAvedPlaceIds.has(place.id);
+    return `
+      <div class="nearby-card" onclick="viewNearbyPlace('${place.id}')">
+        <div class="nearby-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+        <div class="nearby-card-content">
+          <div class="nearby-card-header">
+            <h3 class="nearby-card-title">${place.name}</h3>
+            <button class="nearby-card-save ${isSaved ? 'saved' : ''}"
+                    onclick="event.stopPropagation(); toggleNearbySave('${place.id}')"
+                    title="${isSaved ? 'Remove from saved' : 'Save for later'}">
+              <svg viewBox="0 0 24 24" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="nearby-card-type">${place.category}</div>
+          <div class="nearby-card-description">${place.description}</div>
+          <div class="nearby-card-meta">
+            <div class="nearby-card-meta-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span>${place.distance}</span>
+            </div>
+            <div class="nearby-card-meta-item">
+              <span class="crowd-badge ${place.crowd}">${place.crowd}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Toggle save status for a nearby place
+function toggleNearbySave(placeId) {
+  const place = FAKE_PLACES.find(p => p.id === placeId);
+  if (!place) return;
+
+  try {
+    const userDataStr = JSON.parse(localStorage.getItem('driftUserData') || '{}');
+    userDataStr.savedPlaces = userDataStr.savedPlaces || [];
+
+    const isCurrentlySaved = nearbyAvedPlaceIds.has(placeId);
+
+    if (isCurrentlySaved) {
+      // Remove from saved
+      userDataStr.savedPlaces = userDataStr.savedPlaces.filter(p => p.id !== placeId);
+      nearbyAvedPlaceIds.delete(placeId);
+    } else {
+      // Add to saved
+      const savedPlace = {
+        id: place.id,
+        name: place.name,
+        type: place.category,
+        context: place.description,
+        distance: place.distance,
+        crowd: place.crowd,
+        savedAt: new Date().toISOString()
+      };
+      userDataStr.savedPlaces.push(savedPlace);
+      nearbyAvedPlaceIds.add(placeId);
+    }
+
+    localStorage.setItem('driftUserData', JSON.stringify(userDataStr));
+
+    // Re-render to update the button state
+    renderNearbyPlaces();
+
+    // Update saved page if it exists
+    if (typeof loadSavedPlaces === 'function') {
+      loadSavedPlaces();
+    }
+  } catch (e) {
+    console.error('Error toggling save:', e);
+  }
+}
+
+// View a nearby place (navigate to place detail)
+function viewNearbyPlace(placeId) {
+  const place = FAKE_PLACES.find(p => p.id === placeId);
+  if (!place) return;
+
+  // Calculate time based on distance (assuming ~5 km/h walking speed)
+  const distanceKm = parseFloat(place.distance);
+  const timeMinutes = Math.round((distanceKm / 5) * 60);
+  const timeStr = timeMinutes < 60 ? `${timeMinutes} min` : `${Math.round(timeMinutes / 60)} hr`;
+
+  // Determine effort based on crowd
+  const effortMap = { quiet: 'Easy', moderate: 'Moderate', busy: 'Challenging' };
+  const effort = effortMap[place.crowd] || 'Moderate';
+
+  // Store place data in a way that the place page can access it
+  sessionStorage.setItem('currentPlace', JSON.stringify({
+    id: place.id,
+    name: place.name,
+    type: place.category,
+    description: place.description,
+    context: place.description,
+    distance: place.distance,
+    crowd: place.crowd,
+    time: timeStr,
+    effort: effort
+  }));
+
+  // Navigate to place page
+  window.location.hash = `#place?id=${placeId}`;
+}
+
+/* ========================================
+   PLACE PAGE FUNCTIONS (place.js)
+   ======================================== */
+
+// Place state
+let placeData = null;
+let isSaved = false;
+let isVisited = false;
+
+function initPlace(placeId) {
+  if (!placeId) {
+    showNotFound();
+    return;
+  }
+
+  // First, check sessionStorage (for nearby page places)
+  const sessionPlace = sessionStorage.getItem('currentPlace');
+  if (sessionPlace) {
+    try {
+      placeData = JSON.parse(sessionPlace);
+      // Clear sessionStorage after using it
+      sessionStorage.removeItem('currentPlace');
+    } catch (e) {
+      console.error('Error parsing sessionStorage place data:', e);
+      placeData = null;
+    }
+  }
+
+  // If not in sessionStorage, try localStorage (for map places)
+  if (!placeData) {
+    const places = JSON.parse(localStorage.getItem('driftPlaces') || '[]');
+    placeData = places.find(p => p.id === parseInt(placeId));
+  }
+
+  if (!placeData) {
+    showNotFound();
+    return;
+  }
+
+  // Check if saved
+  const userDataStr = JSON.parse(localStorage.getItem('driftUserData') || '{}');
+  if (userDataStr.savedPlaces) {
+    isSaved = userDataStr.savedPlaces.some(p => p.id === placeData.id);
+  }
+
+  // Check if visited
+  const visitedPlaces = JSON.parse(localStorage.getItem('driftVisitedPlaces') || '[]');
+  isVisited = visitedPlaces.some(p => p.id === placeData.id);
+
+  renderPlace();
+}
+
+// Render place details
+function renderPlace() {
+  document.getElementById('place-name').textContent = placeData.name;
+  document.getElementById('place-description').textContent = placeData.description;
+  document.getElementById('place-context').textContent = placeData.context;
+  document.getElementById('place-distance').textContent = placeData.distance;
+  document.getElementById('place-time').textContent = placeData.time;
+  document.getElementById('place-effort').textContent = placeData.effort;
+  document.getElementById('place-type').textContent = placeData.type;
+
+  // Update crowd badge
+  const crowdBadge = document.getElementById('place-crowd');
+  crowdBadge.textContent = placeData.crowd;
+  crowdBadge.className = `crowd-badge ${placeData.crowd}`;
+
+  // Update save button state
+  updateSaveButton();
+
+  // Update visited button state
+  updateVisitedButton();
+}
+
+// Show not found state
+function showNotFound() {
+  document.getElementById('place-content').innerHTML = `
+    <div class="not-found">
+      <div class="not-found-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="m15 9-6 6"/>
+          <path d="m9 9 6 6"/>
+        </svg>
+      </div>
+      <h3>Place Not Found</h3>
+      <p>This place doesn't exist or has been removed.</p>
+      <button class="btn btn-primary" onclick="window.location.hash='#map'">
+        Back to Map
+      </button>
+    </div>
+  `;
+}
+
+// Toggle save
+function toggleSave() {
+  isSaved = !isSaved;
+
+  // Update localStorage
+  const userDataStr = JSON.parse(localStorage.getItem('driftUserData') || '{}');
+  if (!userDataStr.savedPlaces) userDataStr.savedPlaces = [];
+
+  if (isSaved) {
+    userDataStr.savedPlaces.push({
+      id: placeData.id,
+      name: placeData.name,
+      type: placeData.type,
+      distance: placeData.distance
+    });
+  } else {
+    userDataStr.savedPlaces = userDataStr.savedPlaces.filter(p => p.id !== placeData.id);
+  }
+
+  localStorage.setItem('driftUserData', JSON.stringify(userDataStr));
+  updateSaveButton();
+}
+
+// Update save button state
+function updateSaveButton() {
+  const btn = document.getElementById('save-btn');
+  if (isSaved) {
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+      </svg>
+      Saved
+    `;
+    btn.classList.add('saved');
+  } else {
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+      </svg>
+      Save
+    `;
+    btn.classList.remove('saved');
+  }
+}
+
+// Toggle visited
+function toggleVisited() {
+  isVisited = !isVisited;
+
+  // Update localStorage
+  const visitedPlaces = JSON.parse(localStorage.getItem('driftVisitedPlaces') || '[]');
+
+  if (isVisited) {
+    // Add to visited if not already there
+    if (!visitedPlaces.some(p => p.id === placeData.id)) {
+      visitedPlaces.unshift({
+        id: placeData.id,
+        name: placeData.name,
+        type: placeData.type,
+        distance: placeData.distance,
+        visitedAt: new Date().toISOString()
+      });
+
+      // Check for rewards
+      checkDiscoveryRewards(visitedPlaces.length);
+
+      showToast('Place marked as visited!', 'success');
+    }
+  } else {
+    // Remove from visited
+    const filtered = visitedPlaces.filter(p => p.id !== placeData.id);
+    localStorage.setItem('driftVisitedPlaces', JSON.stringify(filtered));
+    showToast('Removed from visited places', 'info');
+  }
+
+  if (isVisited) {
+    localStorage.setItem('driftVisitedPlaces', JSON.stringify(visitedPlaces));
+  }
+
+  updateVisitedButton();
+}
+
+// Update visited button state
+function updateVisitedButton() {
+  const btn = document.getElementById('visited-btn');
+  const btnText = document.getElementById('visited-btn-text');
+
+  if (isVisited) {
+    btnText.textContent = 'Visited';
+    btn.classList.add('visited');
+  } else {
+    btnText.textContent = 'Mark as Visited';
+    btn.classList.remove('visited');
+  }
+}
+
+// Navigate to place
+function navigateToPlace() {
+  if (!currentPlace || !map) return;
+
+  // Switch to map page
+  window.location.hash = '#map';
+
+  // Small delay to ensure map is visible
+  setTimeout(() => {
+    map.flyTo(
+      [currentPlace.lat, currentPlace.lng],
+      17,
+      { animate: true, duration: 1.2 }
+    );
+
+    // Optional: pulse marker or open popup
+    if (currentPlace.marker) {
+      currentPlace.marker.openPopup();
+    }
+
+  }, 300);
+}
+
+// Go back
+function goBack() {
+  if (window.history.length > 1) {
+    window.history.back();
+  } else {
+    window.location.hash = '#map';
+  }
+}
+
+/* ========================================
+   SAVED PAGE FUNCTIONS (saved.js)
+   ======================================== */
+
+// Saved state
+let savedPlaces = [];
+let visitedPlaces = [];
+let currentTab = 'saved';
+
+function initSaved() {
+  loadSavedData();
+  renderList();
+}
+
+// Load data from localStorage
+function loadSavedData() {
+  // Load saved places from user data
+  const userDataStr = localStorage.getItem('driftUserData');
+  if (userDataStr) {
+    const data = JSON.parse(userDataStr);
+    savedPlaces = data.savedPlaces || [];
+  }
+
+  // Load real visited places from localStorage
+  const visited = localStorage.getItem('driftVisitedPlaces');
+  if (visited) {
+    const rawVisited = JSON.parse(visited);
+    // Format visited date for display
+    visitedPlaces = rawVisited.map(place => ({
+      ...place,
+      visitedDate: place.visitedAt ? formatVisitedDate(place.visitedAt) : place.visitedDate || 'Recently'
+    }));
+  } else {
+    visitedPlaces = [];
+  }
+}
+
+// Switch tabs
+function switchTab(tab) {
+  currentTab = tab;
+
+  // Update tab buttons
+  document.querySelectorAll('.saved-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+
+  // Render list
+  renderList();
+}
+
+// Render list
+function renderList() {
+  const list = document.getElementById('saved-list');
+  const items = currentTab === 'saved' ? savedPlaces : visitedPlaces;
+
+  if (items.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <h3>No ${currentTab} places yet</h3>
+        <p>Start exploring to ${currentTab === 'saved' ? 'save your favorites' : 'discover new places'}</p>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = items.map(place => `
+    <a href="#place?id=${place.id}" class="saved-place">
+      <div class="saved-place-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+      </div>
+      <div class="saved-place-info">
+        <div class="saved-place-name">${place.name}</div>
+        <div class="saved-place-meta">
+          <span class="saved-badge">${place.type}</span>
+          <span class="dot"></span>
+          <span>${place.distance || place.visitedDate}</span>
+        </div>
+      </div>
+    </a>
+  `).join('');
+}
+</script>
+
+</body>
+</html>
